@@ -11,8 +11,8 @@
 @interface AppDelegate ()
 
 @property NSStatusItem *barItem;
-@property NSPopover *pop;
-@property NSEvent *popoverTransiencyMonitor;
+@property BOOL isHidden;
+@property NSMenu *menu;
 
 @end
 
@@ -28,11 +28,32 @@
 	NSMenu *menu = [NSMenu new];
 	[menu addItem:[[NSMenuItem alloc]initWithTitle:@"	显示或隐藏文件(先执行隐藏)" action:@selector(show:) keyEquivalent:@""]];
 	self.barItem.menu = menu;
+	_menu = menu;
 
+	self.isHidden = YES;
+
+	//
+	[menu addItem:[[NSMenuItem alloc]initWithTitle:@"	退出" action:@selector(quit) keyEquivalent:@""]];
+
+}
+
+- (void)quit
+{
+	[NSApp terminate:self];
 }
 
 - (void)show:(id) obj
 {
+	NSString *cmdStr = @"";
+	if (_isHidden) {
+		cmdStr = @"false";
+		_menu.title = @"	显示隐藏文件";
+		_isHidden = NO;
+	}else{
+		cmdStr = @"true";
+		_menu.title = @"	显示隐藏文件";
+		_isHidden = YES;
+	}
 
 		NSAppleScript *killfinder = [[NSAppleScript alloc] initWithSource:@"tell application \"Finder\" to quit"];
 		[killfinder executeAndReturnError:nil];
@@ -41,7 +62,7 @@
 								  arguments:@[@"write"
 											  ,@"com.apple.finder"
 											  ,@"AppleShowAllFiles"
-											  ,@"FALSE"]] waitUntilExit];
+											  ,[NSString stringWithFormat:@"%@",cmdStr]]] waitUntilExit];
 	
 	
 		[[NSTask launchedTaskWithLaunchPath:@"/usr/bin/killall"
