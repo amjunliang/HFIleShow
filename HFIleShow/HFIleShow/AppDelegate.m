@@ -19,61 +19,75 @@
 @implementation AppDelegate
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
-	// Insert code here to initialize your application
+    
+    
+    //item
+    self.barItem = [[ NSStatusBar systemStatusBar] statusItemWithLength:-2];
+    self.barItem.button.image = [NSImage imageNamed:@"StatusBarButtonImage"];
+    
+    //menu
+    NSMenu *menu = [NSMenu new];
+    self.barItem.menu = menu;
+    
+    [menu addItem:[[NSMenuItem alloc]initWithTitle:@"  显示（隐藏文件）  " action:@selector(show) keyEquivalent:@""]];
+    [menu addItem:[[NSMenuItem alloc]initWithTitle:@"  隐藏（隐藏文件）  " action:@selector(hidden) keyEquivalent:@""]];
+    [menu addItem:[[NSMenuItem alloc]initWithTitle:@"  退出  " action:@selector(quit) keyEquivalent:@""]];
+    
+    
+}
+- (void)showFinder{
+}
+- (void)relaunchFinder
+{
+    [[NSTask launchedTaskWithLaunchPath:@"/usr/bin/killall"
+                              arguments:[NSArray arrayWithObjects:@"Finder", nil]] waitUntilExit];
+}
 
-	self.barItem = [[ NSStatusBar systemStatusBar] statusItemWithLength:-2];
-	self.barItem.button.image = [NSImage imageNamed:@"StatusBarButtonImage"];
-	self.barItem.button.action = @selector(show:);
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    if (context == @"QuitFinder")
+    {
+        if([keyPath isEqualToString:@"isTerminated"])
+        {
+            [[NSWorkspace sharedWorkspace] launchAppWithBundleIdentifier:@"com.apple.finder" options:NSWorkspaceLaunchDefault additionalEventParamDescriptor:NULL launchIdentifier:NULL];
+            [object removeObserver:self forKeyPath:@"isTerminated"];
+        }
+    } else {
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    }
+}
 
-	NSMenu *menu = [NSMenu new];
-	[menu addItem:[[NSMenuItem alloc]initWithTitle:@"	显示或隐藏文件(先执行隐藏)" action:@selector(show:) keyEquivalent:@""]];
-	self.barItem.menu = menu;
-	_menu = menu;
+- (void)show
+{
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        
+        [[NSTask launchedTaskWithLaunchPath:@"/usr/bin/defaults"
+                                  arguments:@[@"write"
+                                              ,@"com.apple.finder"
+                                              ,@"AppleShowAllFiles"
+                                              ,@"TRUE"]] waitUntilExit];
+        
+        [self relaunchFinder];
+    });
 
-	self.isHidden = YES;
-
-	//
-	[menu addItem:[[NSMenuItem alloc]initWithTitle:@"	退出" action:@selector(quit) keyEquivalent:@""]];
-
+}
+- (void)hidden
+{
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        
+        [[NSTask launchedTaskWithLaunchPath:@"/usr/bin/defaults"
+                                  arguments:@[@"write"
+                                              ,@"com.apple.finder"
+                                              ,@"AppleShowAllFiles"
+                                              ,@"FALSE"]] waitUntilExit];
+        
+        [self relaunchFinder];
+    });
 }
 
 - (void)quit
 {
-	[NSApp terminate:self];
+    [NSApp terminate:self];
 }
-
-- (void)show:(id) obj
-{
-	NSString *cmdStr = @"";
-	if (_isHidden) {
-		cmdStr = @"false";
-		_menu.title = @"	显示隐藏文件";
-		_isHidden = NO;
-	}else{
-		cmdStr = @"true";
-		_menu.title = @"	显示隐藏文件";
-		_isHidden = YES;
-	}
-
-		NSAppleScript *killfinder = [[NSAppleScript alloc] initWithSource:@"tell application \"Finder\" to quit"];
-		[killfinder executeAndReturnError:nil];
-
-		[[NSTask launchedTaskWithLaunchPath:@"/usr/bin/defaults"
-								  arguments:@[@"write"
-											  ,@"com.apple.finder"
-											  ,@"AppleShowAllFiles"
-											  ,[NSString stringWithFormat:@"%@",cmdStr]]] waitUntilExit];
-	
-	
-		[[NSTask launchedTaskWithLaunchPath:@"/usr/bin/killall"
-								  arguments:[NSArray arrayWithObjects:@"Finder", nil]] waitUntilExit];
-
-
-}
-
-- (void)applicationWillTerminate:(NSNotification *)aNotification {
-	// Insert code here to tear down your application
-}
-
 
 @end
